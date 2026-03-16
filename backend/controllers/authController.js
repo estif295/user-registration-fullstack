@@ -43,29 +43,34 @@ exports.registerUser = async (req, res) => {
 
     await user.save();
 
-    // 6️⃣ Send verification email
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER, // your Gmail address
-        pass: process.env.EMAIL_PASS, // Gmail App Password
-      },
-    });
+    // 6️⃣ Send verification email (optional for testing)
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER, // your Gmail address
+          pass: process.env.EMAIL_PASS, // Gmail App Password
+        },
+      });
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: "Verify Your Email",
-      html: `<p>Hello ${user.name},</p>
-             <p>Click the link below to verify your email:</p>
-             <a href="http://localhost:5000/api/verify/${verificationToken}">Verify Email</a>`,
-    };
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: user.email,
+        subject: "Verify Your Email",
+        html: `<p>Hello ${user.name},</p>
+               <p>Click the link below to verify your email:</p>
+               <a href="http://localhost:5000/api/verify/${verificationToken}">Verify Email</a>`,
+      };
 
-    await transporter.sendMail(mailOptions);
+      await transporter.sendMail(mailOptions);
+    } catch (emailError) {
+      console.error("Email sending failed:", emailError.message);
+      // Continue without failing registration
+    }
 
     // 7️⃣ Respond success
     res.status(201).json({
-      message: "User registered. Please check your email to verify your account.",
+      message: "User registered. Check console for verification token or email if configured.",
     });
   } catch (error) {
     console.error(error);
