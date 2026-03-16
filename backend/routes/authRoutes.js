@@ -1,16 +1,32 @@
 // backend/routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
-const {
-    register,
-    verifyEmail,
-    resendVerification,
-    login,
-    checkEmail
+
+// Import controllers - make sure ALL these functions exist in authController.js
+const { 
+    register, 
+    verifyEmail, 
+    resendVerification, 
+    login, 
+    checkEmail 
 } = require('../controllers/authController');
 
+// Log to check if imports work
+console.log('✅ Auth routes loaded:');
+console.log('  - register:', typeof register);
+console.log('  - verifyEmail:', typeof verifyEmail);
+console.log('  - resendVerification:', typeof resendVerification);
+console.log('  - login:', typeof login);
+console.log('  - checkEmail:', typeof checkEmail);
+
+// ==================== REAL ROUTES ====================
+router.post('/check-email', checkEmail);
+router.post('/register', register);
+router.get('/verify-email', verifyEmail);  // GET for email links
+router.post('/resend-verification', resendVerification);
+router.post('/login', login);
+
 // ==================== TEST ROUTE ====================
-// Use this to test if email sending works
 router.post('/test-email', async (req, res) => {
     const { email } = req.body;
     
@@ -26,32 +42,22 @@ router.post('/test-email', async (req, res) => {
         const testToken = crypto.randomBytes(32).toString('hex');
         
         console.log(`📧 Test email requested for: ${email}`);
-        console.log(`🔑 Test token: ${testToken}`);
         
-        const result = await require('../services/emailService').sendVerificationEmail(
+        const emailService = require('../services/emailService');
+        const result = await emailService.sendVerificationEmail(
             email,
             'Test User',
             testToken
         );
         
-        console.log('📬 Email send result:', result);
         res.json(result);
-        
     } catch (error) {
-        console.error('❌ Test email error:', error);
+        console.error('Test email error:', error);
         res.status(500).json({ 
             success: false, 
             error: error.message 
         });
     }
 });
-// ==================== END TEST ROUTE ====================
-
-// Your regular routes
-router.post('/check-email', checkEmail);
-router.post('/register', register);
-router.get('/verify-email', verifyEmail);
-router.post('/resend-verification', resendVerification);
-router.post('/login', login);
 
 module.exports = router;
