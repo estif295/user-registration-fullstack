@@ -1,17 +1,16 @@
-// routes/authRoutes.js (update your existing file)
+// routes/authRoutes.js
 const express = require('express');
 const router = express.Router();
 const { register } = require('../controllers/authController');
-const { validateEmailFormat, handleValidationErrors } = require('../middleware/validation');
 
-// Registration route with validation
-router.post(
-    '/register',
-    validateEmailFormat,
-    handleValidationErrors,
-    register
-);
+// Make sure register function exists
+console.log('Register function:', register);
 
-// Your other auth routes...
+if (!register) {
+    console.error('❌ Register function is not imported properly!');
+}
+
+// Registration route
+router.post('/register', register);
 
 module.exports = router;
