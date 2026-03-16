@@ -2,106 +2,159 @@
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { validateEmail, normalizeGmail } = require('../services/emailValidator');
 const { checkGoogleAccount } = require('../services/googleChecker');
 
 /**
- * Register new user with name, email, and password
+ * Check email before registration
+ */
+async function checkEmailBeforeRegister(req, res) {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        console.log('🔍 Checking email:', email);
+
+        // Check if already registered in your system
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        
+        // Check Google account
+        const googleCheck = await checkGoogleAccount(email);
+        
+        console.log('Google check result:', googleCheck);
+
+        // Prepare response
+        const response = {
+            success: true,
+            email: email,
+            available: !existingUser,
+            hasGoogleAccount: googleCheck.hasGoogleAccount,
+            googleCheckStatus: googleCheck.success ? 'success' : 'failed',
+        };
+
+        // Add appropriate message
+        if (googleCheck.success) {
+            if (googleCheck.hasGoogleAccount) {
+                response.message = '⚠️ This email has a Google account';
+                response.warning = true;
+            } else {
+                response.message = '✅ No Google account detected';
+            }
+        } else {
+            response.message = '⚠️ Could not verify Google account status';
+            response.note = googleCheck.note || 'Service temporarily unavailable';
+        }
+
+        // If email already registered in your system
+        if (existingUser) {
+            response.message = '❌ Email already registered in our system';
+            response.available = false;
+        }
+
+        res.json(response);
+
+    } catch (error) {
+        console.error('Email check error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error checking email',
+            error: error.message
+        });
+    }
+}
+
+/**
+ * Register new user
  */
 async function register(req, res) {
     try {
+        console.log('📝 Registration request received:', req.body);
+        
         const { name, email, password } = req.body;
         
-        // Validate name has first and last name
-        const nameParts = name.trim().split(/\s+/);
-        if (nameParts.length < 2) {
+        // Validate required fields
+        if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Please enter your full name (first and last name)'
+                message: 'Please provide name, email and password'
             });
         }
-        
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(' ');
-        
-        // Normalize email
-        const normalizedEmail = normalizeGmail(email);
-        
-        // Check if user already exists (by email or normalized email)
-        const existingUser = await User.findOne({
-            $or: [
-                { email: normalizedEmail },
-                { normalizedEmail: normalizedEmail }
-            ]
-        });
-        
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a valid email address'
+            });
+        }
+
+        // Validate password strength
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters long'
+            });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             return res.status(400).json({
                 success: false,
-                message: 'An account with this email already exists'
+                message: 'Email already registered'
             });
         }
+
+        // Check Google account
+        console.log(`🔍 Checking Google account for: ${email}`);
+        const googleCheck = await checkGoogleAccount(email);
         
-        // Validate email thoroughly
-        const validationResult = await validateEmail(normalizedEmail);
-        
-        // Check for critical validation failures
-        if (!validationResult.format_valid) {
+        // If Google check was successful and account exists, block registration
+        if (googleCheck.success && googleCheck.hasGoogleAccount) {
+            console.log(`⚠️ Email ${email} has a Google account - blocking registration`);
+            
             return res.status(400).json({
                 success: false,
-                message: 'Invalid email format',
-                field: 'email'
+                message: 'This email is already associated with a Google account. Please sign in with Google instead.',
+                code: 'GOOGLE_ACCOUNT_EXISTS',
+                suggestion: 'Use "Sign in with Google" option'
             });
         }
-        
-        if (validationResult.disposable) {
-            return res.status(400).json({
-                success: false,
-                message: 'Disposable email addresses are not allowed. Please use a permanent email address.',
-                field: 'email'
-            });
+
+        // If check failed but it's a gmail.com domain, we should be cautious
+        if (!googleCheck.success && email.toLowerCase().includes('@gmail.com')) {
+            console.log(`⚠️ Could not verify Google status for Gmail address: ${email}`);
+            
+            // You can choose to allow or block
+            // I'll allow but add a warning
         }
-        
-        // Optional: Warn about role-based emails but don't block
-        const isRoleBased = validationResult.role_based;
-        
-        // Check Google account existence
-        let hasGoogleAccount = null;
-        let googleCheckError = null;
-        
-        try {
-            const googleCheck = await checkGoogleAccount(normalizedEmail);
-            hasGoogleAccount = googleCheck.exists;
-        } catch (error) {
-            googleCheckError = error.message;
-            console.log('Google check failed:', error.message);
-        }
-        
+
         // Hash password
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
-        
-        // Create user with all fields
+
+        // Create user
         const user = new User({
             name: name.trim(),
-            firstName,
-            lastName,
-            email: normalizedEmail,
-            normalizedEmail: normalizedEmail,
+            email: email.toLowerCase().trim(),
             password: hashedPassword,
-            emailValidation: {
-                validatedAt: new Date(),
-                isDisposable: validationResult.disposable,
-                isRoleBased: isRoleBased,
-                hasGoogleAccount: hasGoogleAccount,
-                googleCheckAt: new Date(),
-                qualityScore: validationResult.quality_score,
-                mxFound: validationResult.mx_found
+            googleAccountCheck: {
+                checked: true,
+                hasGoogleAccount: googleCheck.hasGoogleAccount,
+                checkedAt: new Date(),
+                note: googleCheck.note || ''
             }
         });
-        
+
         await user.save();
-        
+        console.log('✅ User created successfully:', user.email);
+
         // Generate JWT token
         const token = jwt.sign(
             { 
@@ -112,7 +165,7 @@ async function register(req, res) {
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
-        
+
         // Prepare response
         const response = {
             success: true,
@@ -121,38 +174,28 @@ async function register(req, res) {
             user: {
                 id: user._id,
                 name: user.name,
-                email: user.email,
-                isVerified: user.isVerified
+                email: user.email
             }
         };
-        
-        // Add warnings if any
-        if (isRoleBased) {
-            response.warning = 'This appears to be a role-based email (like info@). Consider using a personal email for better account recovery.';
+
+        // Add warning if Google check failed for Gmail
+        if (!googleCheck.success && email.toLowerCase().includes('@gmail.com')) {
+            response.warning = 'Could not verify Google account status. If you have a Google account, consider using Google Sign-In.';
         }
-        
-        if (hasGoogleAccount === true) {
-            response.note = 'This email is associated with a Google account. You can use Google Sign-In for easier access.';
-        }
-        
-        if (validationResult.typo_suggestions) {
-            response.suggestion = validationResult.typo_suggestions;
-        }
-        
-        return res.status(201).json(response);
-        
+
+        res.status(201).json(response);
+
     } catch (error) {
-        console.error('Registration error:', error);
+        console.error('❌ Registration error:', error);
         
-        // Handle duplicate key error
         if (error.code === 11000) {
             return res.status(400).json({
                 success: false,
-                message: 'An account with this email already exists'
+                message: 'Email already registered'
             });
         }
         
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: 'Registration failed. Please try again later.',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -160,64 +203,4 @@ async function register(req, res) {
     }
 }
 
-/**
- * Pre-registration email validation (can be called from frontend)
- */
-async function validateEmailBeforeRegister(req, res) {
-    try {
-        const { email } = req.body;
-        
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email is required'
-            });
-        }
-        
-        // Normalize email
-        const normalizedEmail = normalizeGmail(email);
-        
-        // Check if already registered
-        const existingUser = await User.findOne({
-            $or: [
-                { email: normalizedEmail },
-                { normalizedEmail: normalizedEmail }
-            ]
-        });
-        
-        if (existingUser) {
-            return res.status(200).json({
-                valid: false,
-                message: 'Email already registered',
-                available: false
-            });
-        }
-        
-        // Validate email
-        const validationResult = await validateEmail(normalizedEmail);
-        
-        return res.status(200).json({
-            valid: validationResult.format_valid && !validationResult.disposable,
-            available: true,
-            quality_score: validationResult.quality_score,
-            isDisposable: validationResult.disposable,
-            isRoleBased: validationResult.role_based,
-            suggestion: validationResult.typo_suggestions,
-            message: validationResult.disposable ? 'Disposable emails not allowed' : 
-                     !validationResult.format_valid ? 'Invalid email format' : 
-                     'Email is valid'
-        });
-        
-    } catch (error) {
-        console.error('Pre-validation error:', error);
-        return res.status(500).json({
-            valid: false,
-            message: 'Validation service unavailable'
-        });
-    }
-}
-
-module.exports = { 
-    register,
-    validateEmailBeforeRegister 
-};
+module.exports = { register, checkEmailBeforeRegister };
