@@ -14,15 +14,15 @@ const userSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
+    originalEmail: {
+        type: String,  // Store original email before canonicalization
+        trim: true
+    },
     password: {
         type: String,
         required: true
     },
-    hasGoogleAccount: {
-        type: Boolean,
-        default: false
-    },
-    googleVerifiedAt: {
+    verifiedAt: {
         type: Date
     },
     createdAt: {
@@ -31,16 +31,5 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Remove any middleware that might be causing the error
-// If you have any pre-save hooks, make sure they have the correct signature
-
-// Example of CORRECT pre-save hook (if you need one):
-// userSchema.pre('save', function(next) {
-//     // 'this' refers to the document
-//     console.log('Saving user:', this.email);
-//     next(); // Must call next()
-// });
-
 const User = mongoose.model('User', userSchema);
-
 module.exports = User;

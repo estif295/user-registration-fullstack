@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { register, checkEmailBeforeRegister } = require('../controllers/authController');
 
-// Check email before registration
+// Check email before registration (FREE ULTIMATE CHECKER)
 router.post('/check-email', checkEmailBeforeRegister);
 
 // Register new user
