@@ -1,6 +1,6 @@
 // backend/controllers/authController.js
 
-const User = require("../models/User");
+const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -30,6 +30,7 @@ exports.registerUser = async (req, res) => {
 
     // 4️⃣ Create verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
+    console.log(`Verification token for ${email}: ${verificationToken}`);
 
     // 5️⃣ Save user in database
     const user = new User({
