@@ -5,77 +5,13 @@ const jwt = require('jsonwebtoken');
 const { checkGoogleAccount } = require('../services/googleChecker');
 
 /**
- * Check email before registration
- */
-async function checkEmailBeforeRegister(req, res) {
-    try {
-        const { email } = req.body;
-        
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email is required'
-            });
-        }
-
-        console.log(`\n🔍 CHECKING EMAIL: ${email}`);
-        
-        // Check if already registered in your system
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
-        
-        // Check Google account
-        const googleCheck = await checkGoogleAccount(email);
-        
-        let canRegister = false;
-        let message = '';
-        
-        if (existingUser) {
-            canRegister = false;
-            message = '❌ Email already registered in our system';
-        }
-        else if (googleCheck.success) {
-            if (googleCheck.hasGoogleAccount === true) {
-                // live: true → HAS Google account → ALLOW
-                canRegister = true;
-                message = '✅ Email has REAL Google account - you can register';
-            } else {
-                // live: false → NO Google account → BLOCK
-                canRegister = false;
-                message = '❌ Email has NO Google account - registration not allowed';
-            }
-        } else {
-            canRegister = false;
-            message = '⚠️ Unable to verify email - please try again later';
-        }
-
-        const response = {
-            success: true,
-            email: email,
-            alreadyRegistered: !!existingUser,
-            hasGoogleAccount: googleCheck.hasGoogleAccount,
-            canRegister: canRegister,
-            message: message
-        };
-
-        console.log(`📋 DECISION: ${message}`);
-        res.json(response);
-
-    } catch (error) {
-        console.error('Email check error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error checking email'
-        });
-    }
-}
-
-/**
  * Register new user
  */
 async function register(req, res) {
     try {
         const { name, email, password } = req.body;
         
+        // Validate input
         if (!name || !email || !password) {
             return res.status(400).json({
                 success: false,
@@ -105,7 +41,6 @@ async function register(req, res) {
         }
         
         if (googleCheck.hasGoogleAccount !== true) {
-            // Block if NO Google account
             console.log(`❌ BLOCKED: ${email} has NO Google account`);
             return res.status(400).json({
                 success: false,
@@ -121,16 +56,21 @@ async function register(req, res) {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Create user
-        const user = new User({
+        // Create user object
+        const userData = {
             name: name.trim(),
             email: email.toLowerCase().trim(),
             password: hashedPassword,
             hasGoogleAccount: true,
             googleVerifiedAt: new Date()
-        });
+        };
+        
+        console.log('Creating user with data:', userData);
 
+        // Create and save user
+        const user = new User(userData);
         await user.save();
+        
         console.log(`✅ USER CREATED: ${user.email}`);
 
         // Generate token
@@ -140,7 +80,7 @@ async function register(req, res) {
             { expiresIn: '7d' }
         );
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Registration successful!',
             token,
@@ -153,9 +93,88 @@ async function register(req, res) {
 
     } catch (error) {
         console.error('❌ Registration error:', error);
-        res.status(500).json({
+        
+        // Check for duplicate key error
+        if (error.code === 11000) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email already registered'
+            });
+        }
+        
+        // Check for validation errors
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(err => err.message);
+            return res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: messages
+            });
+        }
+        
+        return res.status(500).json({
             success: false,
-            message: 'Registration failed'
+            message: 'Registration failed. Please try again later.'
+        });
+    }
+}
+
+/**
+ * Check email before registration
+ */
+async function checkEmailBeforeRegister(req, res) {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email is required'
+            });
+        }
+
+        console.log(`\n🔍 CHECKING EMAIL: ${email}`);
+        
+        // Check if already registered
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        
+        // Check Google account
+        const googleCheck = await checkGoogleAccount(email);
+        
+        let canRegister = false;
+        let message = '';
+        
+        if (existingUser) {
+            canRegister = false;
+            message = '❌ Email already registered in our system';
+        }
+        else if (googleCheck.success) {
+            if (googleCheck.hasGoogleAccount === true) {
+                canRegister = true;
+                message = '✅ Email has REAL Google account - you can register';
+            } else {
+                canRegister = false;
+                message = '❌ Email has NO Google account - registration not allowed';
+            }
+        } else {
+            canRegister = false;
+            message = '⚠️ Unable to verify email - please try again later';
+        }
+
+        return res.status(200).json({
+            success: true,
+            email: email,
+            alreadyRegistered: !!existingUser,
+            hasGoogleAccount: googleCheck.hasGoogleAccount,
+            canRegister: canRegister,
+            message: message
+        });
+
+    } catch (error) {
+        console.error('Email check error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error checking email'
         });
     }
 }

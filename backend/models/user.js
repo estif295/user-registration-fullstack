@@ -1,13 +1,11 @@
-// models/user.js
+// backend/models/user.js
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        trim: true,
-        minlength: 2,
-        maxlength: 50
+        trim: true
     },
     email: {
         type: String,
@@ -16,55 +14,33 @@ const userSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
-    normalizedEmail: {
-        type: String,
-        unique: true,
-        sparse: true
-    },
     password: {
         type: String,
-        required: true,
-        minlength: 6
+        required: true
     },
-    isVerified: {
+    hasGoogleAccount: {
         type: Boolean,
         default: false
     },
-    // Email validation results
-    emailValidation: {
-        validatedAt: Date,
-        isDisposable: Boolean,
-        isRoleBased: Boolean,
-        hasGoogleAccount: Boolean,
-        googleCheckAt: Date,
-        qualityScore: Number,
-        mxFound: Boolean
+    googleVerifiedAt: {
+        type: Date
     },
-    // For email verification
-    verificationCode: String,
-    verificationCodeExpires: Date,
-    // Timestamps
     createdAt: {
         type: Date,
         default: Date.now
-    },
-    lastLogin: Date
-});
-
-// Pre-save middleware to normalize Gmail addresses
-userSchema.pre('save', function(next) {
-    if (this.isModified('email')) {
-        const [localPart, domain] = this.email.split('@');
-        if (domain && domain.toLowerCase() === 'gmail.com') {
-            const normalizedLocal = localPart
-                .replace(/\./g, '')
-                .split('+')[0];
-            this.normalizedEmail = `${normalizedLocal}@gmail.com`;
-        } else {
-            this.normalizedEmail = this.email;
-        }
     }
-    next();
 });
 
-module.exports = mongoose.model('User', userSchema);
+// Remove any middleware that might be causing the error
+// If you have any pre-save hooks, make sure they have the correct signature
+
+// Example of CORRECT pre-save hook (if you need one):
+// userSchema.pre('save', function(next) {
+//     // 'this' refers to the document
+//     console.log('Saving user:', this.email);
+//     next(); // Must call next()
+// });
+
+const User = mongoose.model('User', userSchema);
+
+module.exports = User;
