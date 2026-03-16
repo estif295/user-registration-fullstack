@@ -1,29 +1,18 @@
-// services/googleChecker.js
+// backend/services/googleChecker.js
 const axios = require('axios');
 require('dotenv').config();
 
 /**
- * Check if an email has a Google/Gmail account
+ * Check if email has a REAL Google account
  * Uses RapidAPI Google-Checker service
  */
 async function checkGoogleAccount(email) {
     try {
-        // Make sure you have the API key
         const apiKey = process.env.RAPIDAPI_KEY;
         
-        if (!apiKey) {
-            console.error('❌ RAPIDAPI_KEY is missing in .env file');
-            return {
-                success: false,
-                hasGoogleAccount: null,
-                error: 'API key not configured',
-                note: 'Please add RAPIDAPI_KEY to your .env file'
-            };
-        }
-
+        console.log('🔍 Using API Key:', apiKey ? '✅ Present' : '❌ Missing');
         console.log(`🔍 Checking Google account for: ${email}`);
-        console.log('Using API Key:', apiKey.substring(0, 5) + '...'); // Log first 5 chars for debugging
-        
+
         const options = {
             method: 'POST',
             url: 'https://google-checker2.p.rapidapi.com/check',
@@ -35,60 +24,41 @@ async function checkGoogleAccount(email) {
             data: { 
                 input: email 
             },
-            timeout: 10000 // 10 second timeout
+            timeout: 10000
         };
 
         const response = await axios.request(options);
         
-        console.log('✅ Google Checker API response:', response.data);
+        console.log('✅ Google API Response:', response.data);
         
-        // The API returns { "live": true/false, "note": "" }
-        // "live": true means the email has a Google account
+        // IMPORTANT: 
+        // live: true  = Email has REAL Google account → ALLOW
+        // live: false = Email has NO Google account → BLOCK
         const hasGoogleAccount = response.data.live === true;
         
         return {
             success: true,
             hasGoogleAccount: hasGoogleAccount,
+            live: response.data.live,
             note: response.data.note || '',
-            raw: response.data
+            message: hasGoogleAccount ? 
+                '✅ Has Google account' : 
+                '❌ No Google account'
         };
 
     } catch (error) {
-        console.error('❌ Google Checker API error:');
+        console.error('❌ Google Checker error:', error.message);
         
         if (error.response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
-            console.error('Response data:', error.response.data);
-            console.error('Response status:', error.response.status);
-            console.error('Response headers:', error.response.headers);
-            
-            return {
-                success: false,
-                hasGoogleAccount: null,
-                error: `API returned status ${error.response.status}`,
-                details: error.response.data,
-                note: 'Google check service error'
-            };
-        } else if (error.request) {
-            // The request was made but no response was received
-            console.error('No response received:', error.request);
-            return {
-                success: false,
-                hasGoogleAccount: null,
-                error: 'No response from API',
-                note: 'Google check service timeout'
-            };
-        } else {
-            // Something happened in setting up the request that triggered an Error
-            console.error('Error setting up request:', error.message);
-            return {
-                success: false,
-                hasGoogleAccount: null,
-                error: error.message,
-                note: 'Failed to check Google account'
-            };
+            console.error('Status:', error.response.status);
+            console.error('Data:', error.response.data);
         }
+        
+        return {
+            success: false,
+            hasGoogleAccount: null,
+            error: error.message
+        };
     }
 }
 
