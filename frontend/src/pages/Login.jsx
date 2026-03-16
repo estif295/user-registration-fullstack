@@ -31,33 +31,28 @@ function Login(){
   };
 
   return(
-
-    <div>
-
+    <div className="container">
       <h2>Login</h2>
-
       <form onSubmit={handleLogin}>
-
         <input
           type="email"
           placeholder="Email"
+          value={email}
           onChange={(e)=>setEmail(e.target.value)}
         />
-
         <input
           type="password"
           placeholder="Password"
+          value={password}
           onChange={(e)=>setPassword(e.target.value)}
         />
-
         <button type="submit">Login</button>
-
       </form>
-
-      <p>{message}</p>
-
+      <p className={message.includes("Successful") ? "message" : "error"}>{message}</p>
+      <div className="link">
+        <a href="/">Don't have an account? Register</a>
+      </div>
     </div>
-
   );
 
 }
