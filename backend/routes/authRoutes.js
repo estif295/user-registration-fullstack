@@ -1,12 +1,17 @@
-// backend/routes/authRoutes.js
-const express = require("express");
+// routes/authRoutes.js (update your existing file)
+const express = require('express');
 const router = express.Router();
-const { registerUser, loginUser } = require("../controllers/authController");
+const { register } = require('../controllers/authController');
+const { validateEmailFormat, handleValidationErrors } = require('../middleware/validation');
 
-// POST register
-router.post("/register", registerUser);
+// Registration route with validation
+router.post(
+    '/register',
+    validateEmailFormat,
+    handleValidationErrors,
+    register
+);
 
-// POST login
-router.post("/login", loginUser);
+// Your other auth routes...
 
 module.exports = router;
