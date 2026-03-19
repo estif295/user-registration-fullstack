@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   credentials: true
@@ -36,7 +36,9 @@ const emailService = require('./services/emailService');
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
+const verifyRoutes = require('./routes/verifyRoutes');
 app.use('/api/auth', authRoutes);
+app.use('/api/auth', verifyRoutes);
 
 // Health check
 app.get('/', (req, res) => {
