@@ -30,6 +30,8 @@ const userSchema = new mongoose.Schema({
   },
   emailVerificationToken: String,
   emailVerificationExpire: Date,
+  verificationToken: String,
+  verificationTokenExpires: Date,
   
   // 🔐 NEW: Password Reset Fields
   resetPasswordToken: String,

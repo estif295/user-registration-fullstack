@@ -53,7 +53,9 @@ async function register(req, res) {
             name,
             email,
             password,
-            verificationToken,
+            emailVerificationToken: verificationToken,
+            emailVerificationExpire: new Date(Date.now() + 24*60*60*1000),
+            verificationToken: verificationToken,
             verificationTokenExpires: new Date(Date.now() + 24*60*60*1000),
             isVerified: false,
             isRealGmail: true
@@ -85,17 +87,20 @@ async function register(req, res) {
 // Verify email
 async function verifyEmail(req, res) {
     try {
-        const { token } = req.query;
+        const token = req.query?.token || req.body?.token;
         
         console.log(`🔍 Verifying email with token: ${token}`);
+        console.log('📦 Request query:', req.query, 'body:', req.body);
         
         if (!token) {
             return res.status(400).json({ success: false, message: 'Token required' });
         }
 
-        const user = await User.findOne({
-            verificationToken: token,
-            verificationTokenExpires: { $gt: Date.now() }
+        let user = await User.findOne({
+            $or: [
+                { emailVerificationToken: token, emailVerificationExpire: { $gt: Date.now() } },
+                { verificationToken: token, verificationTokenExpires: { $gt: Date.now() } }
+            ]
         });
 
         if (!user) {
@@ -103,7 +108,14 @@ async function verifyEmail(req, res) {
             return res.status(400).json({ success: false, message: 'Invalid or expired link' });
         }
 
+        if (user.isVerified) {
+            console.log('ℹ️ Already verified');
+            return res.json({ success: true, message: 'Email already verified. Please log in.' });
+        }
+
         user.isVerified = true;
+        user.emailVerificationToken = undefined;
+        user.emailVerificationExpire = undefined;
         user.verificationToken = undefined;
         user.verificationTokenExpires = undefined;
         await user.save();
@@ -138,6 +150,8 @@ async function resendVerification(req, res) {
         
         // Generate new token
         const verificationToken = crypto.randomBytes(32).toString('hex');
+        user.emailVerificationToken = verificationToken;
+        user.emailVerificationExpire = new Date(Date.now() + 24*60*60*1000);
         user.verificationToken = verificationToken;
         user.verificationTokenExpires = new Date(Date.now() + 24*60*60*1000);
         await user.save();
