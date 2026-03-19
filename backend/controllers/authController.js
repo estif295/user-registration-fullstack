@@ -64,16 +64,10 @@ const registerUser = async (req, res) => {
       // Continue even if email fails
     }
     
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
-    );
-    
+    // Do not allow immediate login until email verification
     res.status(201).json({
       success: true,
-      token,
+      message: 'Registration successful. Verification email sent (or should be sent). Please verify your email before login.',
       user: {
         id: user._id,
         name: user.name,
@@ -106,7 +100,7 @@ const loginUser = async (req, res) => {
     
     if (!user) {
       console.log('❌ User not found');
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(404).json({ message: 'No account found. Please register first.' });
     }
     
     // Check password

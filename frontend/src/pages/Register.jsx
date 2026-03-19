@@ -22,32 +22,40 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (formData.password !== formData.confirmPassword) {
       return toast.error('Passwords do not match')
     }
 
     setLoading(true)
 
+    const registrationPromise = API.post('/auth/register', {
+      name: formData.name,
+      email: formData.email,
+      password: formData.password
+    })
+
+    toast.promise(
+      registrationPromise,
+      {
+        loading: 'Registering your account...',
+        success: (res) => res.data.message || 'Registration successful! Please verify your email.',
+        error: (err) => err.response?.data?.message || 'Registration failed. Please try again.'
+      }
+    )
+
     try {
-      const { data } = await API.post('/auth/register', {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password
-      })
-      
-      // On register we may not get back token/user until verification is complete
-      if (data?.token && data?.user) {
+      const { data } = await registrationPromise
+
+      if (data?.token && data?.user && data.user.isVerified) {
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
-        toast.success('Registration successful!')
         navigate('/dashboard')
       } else {
-        toast.success(data.message || 'Registration successful! Please verify your email and login.')
         navigate('/login')
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed')
+      // Error already shown by toast.promise
     } finally {
       setLoading(false)
     }

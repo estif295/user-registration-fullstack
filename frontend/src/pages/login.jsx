@@ -38,22 +38,41 @@ const Login = () => {
     setLoading(true);
     setNeedsVerification(false);
 
+    const loginPromise = API.post('/auth/login', formData);
+
+    toast.promise(
+      loginPromise,
+      {
+        loading: 'Signing in...',
+        success: (res) => {
+          if (!res.data?.isVerified && res.data?.needsVerification) {
+            return 'Please verify your email before logging in';
+          }
+          return 'Login successful!';
+        },
+        error: (err) => {
+          if (err.response?.status === 404) {
+            return 'No account found. Please register first.';
+          }
+          return err.response?.data?.message || 'Login failed. Try again.';
+        }
+      }
+    )
+
     try {
-      const { data } = await API.post('/auth/login', formData);
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      toast.success('Login successful!');
-      navigate('/dashboard');
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
-      
-      if (error.response?.data?.needsVerification) {
+      const { data } = await loginPromise;
+
+      if (data.needsVerification) {
         setNeedsVerification(true);
         setUnverifiedEmail(formData.email);
-        toast.error('Please verify your email before logging in');
-      } else {
-        toast.error(errorMessage);
+        return;
       }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      navigate('/dashboard');
+    } catch (error) {
+      // Already handled by toast.promise
     } finally {
       setLoading(false);
     }
@@ -74,6 +93,7 @@ const Login = () => {
 
   // Only Google login handler
   const handleGoogleLogin = () => {
+    toast('Redirecting to Google sign-in...', { icon: '🌐' });
     window.location.href = 'http://localhost:5000/api/auth/google';
   };
 
