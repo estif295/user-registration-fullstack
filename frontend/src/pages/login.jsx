@@ -24,11 +24,16 @@ const Login = () => {
 
     try {
       const { data } = await API.post('/auth/login', formData)
+      console.log('Login response:', data) // Debug log
+      
+      // Store token and user data
       localStorage.setItem('token', data.token)
       localStorage.setItem('user', JSON.stringify(data.user))
+      
       toast.success('Login successful!')
       navigate('/dashboard')
     } catch (error) {
+      console.error('Login error:', error.response?.data)
       toast.error(error.response?.data?.message || 'Login failed')
     } finally {
       setLoading(false)
@@ -75,7 +80,6 @@ const Login = () => {
             </div>
           </div>
 
-          {/* ✅ ADD THIS - Forgot Password Link */}
           <div className="flex items-center justify-end">
             <div className="text-sm">
               <Link to="/forgot-password" className="font-medium text-indigo-600 hover:text-indigo-500">

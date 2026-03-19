@@ -36,10 +36,16 @@ const Register = () => {
         password: formData.password
       })
       
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
-      toast.success('Registration successful!')
-      navigate('/dashboard')
+      // On register we may not get back token/user until verification is complete
+      if (data?.token && data?.user) {
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        toast.success('Registration successful!')
+        navigate('/dashboard')
+      } else {
+        toast.success(data.message || 'Registration successful! Please verify your email and login.')
+        navigate('/login')
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Registration failed')
     } finally {

@@ -9,12 +9,28 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const userData = localStorage.getItem('user')
-    if (userData) {
-      setUser(JSON.parse(userData))
+    try {
+      // Safely get and parse user data
+      const userData = localStorage.getItem('user')
+      console.log('User data from localStorage:', userData) // Debug log
+      
+      if (userData && userData !== 'undefined' && userData !== 'null' && userData.trim() !== '') {
+        const parsedUser = JSON.parse(userData)
+        setUser(parsedUser)
+      } else {
+        // If no user data, redirect to login
+        navigate('/login')
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error)
+      // If data is corrupted, clear it and redirect
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+      navigate('/login')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }, [])
+  }, [navigate])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -31,6 +47,14 @@ const Dashboard = () => {
     )
   }
 
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">No user data found. Please login again.</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow-sm">
@@ -40,7 +64,7 @@ const Dashboard = () => {
               <h1 className="text-xl font-semibold">Dashboard</h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-gray-700">Welcome, {user?.name}!</span>
+              <span className="text-gray-700">Welcome, {user?.name || 'User'}!</span>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -69,13 +93,19 @@ const Dashboard = () => {
                   <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt className="text-sm font-medium text-gray-500">Full name</dt>
                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {user?.name}
+                      {user?.name || 'Not provided'}
                     </dd>
                   </div>
                   <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt className="text-sm font-medium text-gray-500">Email address</dt>
                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                      {user?.email}
+                      {user?.email || 'Not provided'}
+                    </dd>
+                  </div>
+                  <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt className="text-sm font-medium text-gray-500">Account Status</dt>
+                    <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                      {user?.isVerified ? '✅ Verified' : '❌ Not Verified'}
                     </dd>
                   </div>
                 </dl>
