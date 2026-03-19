@@ -5,83 +5,78 @@ const cors = require('cors');
 const session = require('express-session');
 const passport = require('passport');
 
-// Load environment variables
 dotenv.config();
 
-// Create Express app - ONLY ONCE!
 const app = express();
 
-// Frontend URL fallback for OAuth redirects
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+// ✅ Production-ready CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  process.env.FRONTEND_URL || 'https://your-frontend.vercel.app'
+].filter(Boolean);
 
-// Debug environment variables
-console.log('🔍 Environment check:');
-console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✅ Present' : '❌ Missing');
-console.log('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? '✅ Present' : '❌ Missing');
-console.log('  - GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? '✅ Present' : '❌ Missing');
-console.log('  - GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? '✅ Present' : '❌ Missing');
-console.log('  - SESSION_SECRET:', process.env.SESSION_SECRET ? '✅ Present' : '❌ Missing');
-
-// Session middleware
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    secure: false // set to true in production with HTTPS
-  }
-}));
-
-// Initialize Passport
-app.use(passport.initialize());
-app.use(passport.session());
-
-// Load Passport strategies
-try {
-  require('./config/passport')(passport);
-  console.log('✅ Passport configured successfully');
-} catch (error) {
-  console.error('❌ Passport config error:', error.message);
-}
-
-// CORS configuration
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Body parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB connection
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/user_registration';
-console.log('📡 Connecting to MongoDB...');
+// Session for Passport
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000
+  }
+}));
 
-mongoose.connect(MONGODB_URI)
+app.use(passport.initialize());
+app.use(passport.session());
+
+// MongoDB connection
+console.log('📡 Connecting to MongoDB...');
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err.message));
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err.message);
+    process.exit(1);
+  });
+
+// Passport config
+require('./config/passport')(passport);
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
-// Basic route
-app.get('/', (req, res) => {
-  res.send('API is running...');
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('❌ Server error:', err.stack);
-  res.status(500).json({ message: 'Something went wrong!' });
+  console.error('❌ Error:', err.stack);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
 });
