@@ -160,12 +160,16 @@ async function login(req, res) {
     try {
         const { email, password } = req.body;
         
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
+        if (!password) {
+            return res.status(400).json({ success: false, message: 'Password is required' });
+        }
+
         const isValid = await bcrypt.compare(password, user.password);
         
         if (!isValid) {
@@ -198,7 +202,8 @@ async function login(req, res) {
         });
         
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Login failed' });
+        console.error('Login handler error:', error);
+        res.status(500).json({ success: false, message: 'Login failed', error: error.message });
     }
 }
 
