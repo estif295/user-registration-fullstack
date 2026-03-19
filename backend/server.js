@@ -11,10 +11,15 @@ dotenv.config();
 // Create Express app - ONLY ONCE!
 const app = express();
 
+// Frontend URL fallback for OAuth redirects
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
 // Debug environment variables
 console.log('🔍 Environment check:');
 console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? '✅ Present' : '❌ Missing');
 console.log('  - GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? '✅ Present' : '❌ Missing');
+console.log('  - GITHUB_CLIENT_ID:', process.env.GITHUB_CLIENT_ID ? '✅ Present' : '❌ Missing');
+console.log('  - GITHUB_CLIENT_SECRET:', process.env.GITHUB_CLIENT_SECRET ? '✅ Present' : '❌ Missing');
 console.log('  - SESSION_SECRET:', process.env.SESSION_SECRET ? '✅ Present' : '❌ Missing');
 
 // Session middleware
@@ -42,7 +47,7 @@ try {
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: FRONTEND_URL,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']

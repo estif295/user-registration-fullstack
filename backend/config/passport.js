@@ -16,42 +16,37 @@ module.exports = function(passport) {
     }
   });
 
+  // ========== ONLY GOOGLE STRATEGY ==========
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     console.log('✅ Configuring Google Strategy');
     
     passport.use(new GoogleStrategy({
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: 'http://localhost:5000/api/auth/google/callback',
+      callbackURL: 'http://localhost:5000/api/auth/google/callback'
     }, async (accessToken, refreshToken, profile, done) => {
       try {
         const email = profile.emails[0].value;
         console.log('📧 Google email:', email);
         
-        // Check if user exists
         let user = await User.findOne({ email });
         
         if (user) {
           console.log('👤 Existing user found');
-          // Update googleId if not set
           if (!user.googleId) {
             user.googleId = profile.id;
             user.isVerified = true;
             await user.save();
-            console.log('✅ Updated user with Google ID');
           }
           return done(null, user);
         } else {
           console.log('👤 Creating new user from Google');
-          // Create new user WITHOUT password
           const newUser = new User({
             name: profile.displayName,
             email: email,
             googleId: profile.id,
-            isVerified: true, // Google users are pre-verified
-            // No password field for OAuth users
+            isVerified: true
           });
-          
           await newUser.save();
           console.log('✅ New user created:', newUser.email);
           return done(null, newUser);
@@ -61,5 +56,9 @@ module.exports = function(passport) {
         return done(error, null);
       }
     }));
+  } else {
+    console.log('⚠️ Google credentials missing - skipping Google strategy');
   }
+
+  console.log('✅ Passport configured with Google strategy only');
 };
