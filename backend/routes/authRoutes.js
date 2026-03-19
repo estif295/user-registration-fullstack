@@ -3,12 +3,14 @@ const router = express.Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 
+// Import controllers
 const { 
   registerUser, 
   loginUser, 
   verifyEmail,
   resendVerification 
 } = require('../controllers/authController');
+
 const { forgotPassword, resetPassword } = require('../controllers/passwordController');
 
 // Regular auth routes
@@ -30,15 +32,18 @@ router.get('/google/callback',
     session: false 
   }),
   (req, res) => {
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: req.user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
-    );
-    
-    // Redirect to frontend with token
-    res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    try {
+      const token = jwt.sign(
+        { id: req.user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE }
+      );
+      
+      res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    } catch (error) {
+      console.error('Google callback error:', error);
+      res.redirect('http://localhost:3000/login?error=auth_failed');
+    }
   }
 );
 
@@ -53,13 +58,18 @@ router.get('/facebook/callback',
     session: false 
   }),
   (req, res) => {
-    const token = jwt.sign(
-      { id: req.user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
-    );
-    
-    res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    try {
+      const token = jwt.sign(
+        { id: req.user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE }
+      );
+      
+      res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    } catch (error) {
+      console.error('Facebook callback error:', error);
+      res.redirect('http://localhost:3000/login?error=auth_failed');
+    }
   }
 );
 
@@ -74,13 +84,18 @@ router.get('/github/callback',
     session: false 
   }),
   (req, res) => {
-    const token = jwt.sign(
-      { id: req.user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
-    );
-    
-    res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    try {
+      const token = jwt.sign(
+        { id: req.user._id },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRE }
+      );
+      
+      res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+    } catch (error) {
+      console.error('GitHub callback error:', error);
+      res.redirect('http://localhost:3000/login?error=auth_failed');
+    }
   }
 );
 
