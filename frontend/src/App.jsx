@@ -5,6 +5,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import SocialLogin from './pages/SocialLogin'; // Make sure this is imported
 
 function App() {
   const isAuthenticated = !!localStorage.getItem('token');
@@ -16,8 +17,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        {/* IMPORTANT: The colon (:) before resetToken is required */}
         <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
+        
+        {/* This route must exist */}
+        <Route path="/social-login" element={<SocialLogin />} />
+        
         <Route 
           path="/dashboard" 
           element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 

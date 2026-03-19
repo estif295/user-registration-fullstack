@@ -3,10 +3,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
-exports.registerUser = async (req, res) => {
+// ========== REGISTER USER ==========
+const registerUser = async (req, res) => {
   try {
     const { name, email, password } = req.body;
     
@@ -90,30 +88,47 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-exports.loginUser = async (req, res) => {
+// ========== LOGIN USER ==========
+// ✅ UPDATED: Now REQUIRES email verification
+const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
     
     console.log('🔐 Login attempt for:', email);
     
+    // Check if email and password exist
     if (!email || !password) {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
     
+    // Find user by email
     const user = await User.findOne({ email }).select('+password');
     
     if (!user) {
+      console.log('❌ User not found');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
+    // Check password
     const isMatch = await user.matchPassword(password);
     
     if (!isMatch) {
+      console.log('❌ Password incorrect');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
+    
+    // ✅ REQUIRE EMAIL VERIFICATION - REMOVED DEVELOPMENT BYPASS
+    if (!user.isVerified) {
+      console.log('❌ Email not verified for:', email);
+      return res.status(401).json({ 
+        success: false,
+        message: 'Please verify your email before logging in. Check your inbox for the verification link.',
+        needsVerification: true,
+        email: user.email
+      });
+    }
+    
+    console.log('✅ Login successful for:', user.email);
     
     // Generate token
     const token = jwt.sign(
@@ -139,10 +154,8 @@ exports.loginUser = async (req, res) => {
   }
 };
 
-// @desc    Verify email
-// @route   GET /api/auth/verify-email/:token
-// @access  Public
-exports.verifyEmail = async (req, res) => {
+// ========== VERIFY EMAIL ==========
+const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
     
@@ -177,10 +190,8 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
-// @desc    Resend verification email
-// @route   POST /api/auth/resend-verification
-// @access  Public
-exports.resendVerification = async (req, res) => {
+// ========== RESEND VERIFICATION ==========
+const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -244,4 +255,12 @@ exports.resendVerification = async (req, res) => {
     console.error('Resend error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+};
+
+// ✅ IMPORTANT: Export all functions at the bottom
+module.exports = {
+  registerUser,
+  loginUser,
+  verifyEmail,
+  resendVerification
 };

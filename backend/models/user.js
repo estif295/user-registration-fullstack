@@ -15,7 +15,10 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() {
+      // Password is required ONLY if user doesn't have OAuth IDs
+      return !this.googleId && !this.facebookId && !this.githubId;
+    },
     minlength: 6,
     select: false
   },
@@ -23,21 +26,21 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  // Social login IDs
+  // OAuth fields
   googleId: {
     type: String,
-    unique: true,
-    sparse: true
+    sparse: true,
+    unique: true
   },
   facebookId: {
     type: String,
-    unique: true,
-    sparse: true
+    sparse: true,
+    unique: true
   },
   githubId: {
     type: String,
-    unique: true,
-    sparse: true
+    sparse: true,
+    unique: true
   },
   // Profile
   avatar: {
@@ -55,11 +58,13 @@ const userSchema = new mongoose.Schema({
   }
 });
 
-// Hash password before saving
+// Hash password before saving (only if password exists and is modified)
 userSchema.pre('save', async function(next) {
-  if (!this.isModified('password') || this.password.startsWith('oauth_')) {
+  // Skip if no password or password not modified
+  if (!this.password || !this.isModified('password')) {
     return next();
   }
+  
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
@@ -69,8 +74,9 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Compare password method
+// Compare password method (only if password exists)
 userSchema.methods.matchPassword = async function(enteredPassword) {
+  if (!this.password) return false;
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
