@@ -1,90 +1,86 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import toast from 'react-hot-toast'
-import API from '../api'
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import API from '../api';
 
 const ResetPassword = () => {
-  // ✅ Get token from URL parameters
-  const { resetToken } = useParams()
-  const navigate = useNavigate()
+  const { resetToken } = useParams();
+  const navigate = useNavigate();
   
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [tokenValid, setTokenValid] = useState(true)
-  const [checkingToken, setCheckingToken] = useState(true)
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [validToken, setValidToken] = useState(true);
+  const [checking, setChecking] = useState(true);
 
-  // ✅ Check if token exists on component mount
   useEffect(() => {
-    console.log('🔍 Reset token from URL:', resetToken)
+    // Check if token exists
+    console.log('🔍 Reset token from URL:', resetToken);
     
     if (!resetToken || resetToken === 'undefined' || resetToken === 'null') {
-      console.log('❌ No valid token found')
-      setTokenValid(false)
-      toast.error('Invalid reset link. Please request a new one.')
+      console.log('❌ No valid token found');
+      setValidToken(false);
+      toast.error('Invalid reset link. Please request a new one.');
     } else {
-      console.log('✅ Token is valid:', resetToken.substring(0, 10) + '...')
-      setTokenValid(true)
+      console.log('✅ Token is valid:', resetToken.substring(0, 10) + '...');
+      setValidToken(true);
     }
-    setCheckingToken(false)
-  }, [resetToken])
+    setChecking(false);
+  }, [resetToken]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     
     // Validation
     if (!password || !confirmPassword) {
-      return toast.error('Please fill in all fields')
+      return toast.error('Please fill in all fields');
     }
     
     if (password !== confirmPassword) {
-      return toast.error('Passwords do not match')
+      return toast.error('Passwords do not match');
     }
     
     if (password.length < 6) {
-      return toast.error('Password must be at least 6 characters')
+      return toast.error('Password must be at least 6 characters');
     }
     
-    setLoading(true)
+    setLoading(true);
     
     try {
-      console.log('🔄 Sending reset request with token:', resetToken)
+      console.log('🔄 Sending reset request with token:', resetToken);
       
-      // ✅ Make sure the URL matches your backend route
       const { data } = await API.put(`/auth/reset-password/${resetToken}`, { 
         password 
-      })
+      });
       
-      console.log('✅ Reset successful:', data)
-      toast.success('Password reset successful! Redirecting to login...')
+      console.log('✅ Reset successful:', data);
+      toast.success('Password reset successful! Redirecting to login...');
       
       // Clear form
-      setPassword('')
-      setConfirmPassword('')
+      setPassword('');
+      setConfirmPassword('');
       
       // Redirect to login after 3 seconds
       setTimeout(() => {
-        navigate('/login')
-      }, 3000)
+        navigate('/login');
+      }, 3000);
       
     } catch (error) {
-      console.error('❌ Reset error:', error.response?.data || error.message)
+      console.error('❌ Reset error:', error.response?.data || error.message);
       
-      // Handle specific error messages
-      const errorMessage = error.response?.data?.message || 'Failed to reset password'
-      toast.error(errorMessage)
+      const errorMessage = error.response?.data?.message || 'Failed to reset password';
+      toast.error(errorMessage);
       
-      // If token is invalid or expired, show message
+      // If token is invalid, show message
       if (errorMessage.includes('Invalid') || errorMessage.includes('expired')) {
-        setTokenValid(false)
+        setValidToken(false);
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  // Show loading while checking token
-  if (checkingToken) {
+  if (checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -92,11 +88,10 @@ const ResetPassword = () => {
           <p className="mt-4 text-gray-600">Checking reset link...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  // Show error if token is invalid
-  if (!tokenValid) {
+  if (!validToken) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full space-y-8 text-center">
@@ -129,7 +124,7 @@ const ResetPassword = () => {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -142,11 +137,6 @@ const ResetPassword = () => {
           <p className="mt-2 text-center text-sm text-gray-600">
             Enter your new password below
           </p>
-        </div>
-        
-        {/* Debug info - remove in production */}
-        <div className="text-xs text-gray-400 text-center">
-          Token: {resetToken?.substring(0, 15)}...
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -211,7 +201,7 @@ const ResetPassword = () => {
         </form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ResetPassword
+export default ResetPassword;
