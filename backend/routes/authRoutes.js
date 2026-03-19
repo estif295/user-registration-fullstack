@@ -1,16 +1,87 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController');
+const passport = require('passport');
+const jwt = require('jsonwebtoken');
 
-// Import password reset functions
-const passwordController = require('../controllers/passwordController');
+const { 
+  registerUser, 
+  loginUser, 
+  verifyEmail,
+  resendVerification 
+} = require('../controllers/authController');
+const { forgotPassword, resetPassword } = require('../controllers/passwordController');
 
-// Auth routes
-router.post('/register', register);
-router.post('/login', login);
+// Regular auth routes
+router.post('/register', registerUser);
+router.post('/login', loginUser);
+router.get('/verify-email/:token', verifyEmail);
+router.post('/resend-verification', resendVerification);
+router.post('/forgot-password', forgotPassword);
+router.put('/reset-password/:resetToken', resetPassword);
 
-// Password reset routes
-router.post('/forgot-password', passwordController.forgotPassword);
-router.put('/reset-password/:resetToken', passwordController.resetPassword);
+// ========== GOOGLE AUTH ==========
+router.get('/google', passport.authenticate('google', { 
+  scope: ['profile', 'email'] 
+}));
+
+router.get('/google/callback', 
+  passport.authenticate('google', { 
+    failureRedirect: 'http://localhost:3000/login?error=google_auth_failed',
+    session: false 
+  }),
+  (req, res) => {
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: req.user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE }
+    );
+    
+    // Redirect to frontend with token
+    res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+  }
+);
+
+// ========== FACEBOOK AUTH ==========
+router.get('/facebook', passport.authenticate('facebook', { 
+  scope: ['email'] 
+}));
+
+router.get('/facebook/callback', 
+  passport.authenticate('facebook', { 
+    failureRedirect: 'http://localhost:3000/login?error=facebook_auth_failed',
+    session: false 
+  }),
+  (req, res) => {
+    const token = jwt.sign(
+      { id: req.user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE }
+    );
+    
+    res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+  }
+);
+
+// ========== GITHUB AUTH ==========
+router.get('/github', passport.authenticate('github', { 
+  scope: ['user:email'] 
+}));
+
+router.get('/github/callback', 
+  passport.authenticate('github', { 
+    failureRedirect: 'http://localhost:3000/login?error=github_auth_failed',
+    session: false 
+  }),
+  (req, res) => {
+    const token = jwt.sign(
+      { id: req.user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE }
+    );
+    
+    res.redirect(`http://localhost:3000/social-login?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user))}`);
+  }
+);
 
 module.exports = router;

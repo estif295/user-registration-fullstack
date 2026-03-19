@@ -1,13 +1,14 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import ForgotPassword from './pages/ForgotPassword'
-import ResetPassword from './pages/ResetPassword'  // ✅ Import this
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import SocialLogin from './pages/SocialLogin'; // Add this
 
 function App() {
-  const isAuthenticated = !!localStorage.getItem('token')
+  const isAuthenticated = !!localStorage.getItem('token');
 
   return (
     <Router>
@@ -16,8 +17,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        {/* ✅ This must match exactly */}
         <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
+        
+        {/* Add Social Login callback route */}
+        <Route path="/social-login" element={<SocialLogin />} />
+        
         <Route 
           path="/dashboard" 
           element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />} 
@@ -25,7 +29,7 @@ function App() {
         <Route path="/" element={<Navigate to="/login" />} />
       </Routes>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;

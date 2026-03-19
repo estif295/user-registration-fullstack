@@ -1,53 +1,53 @@
-// backend/server.js - UPDATED VERSION
-// Load dotenv FIRST, before anything else!
-require('dotenv').config();
-
-// NOW check if env variables are loaded
-console.log('🔍 Checking environment variables:');
-console.log('📧 EMAIL_USER:', process.env.EMAIL_USER ? '✅ Found' : '❌ Missing');
-console.log('📧 EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Found' : '❌ Missing');
-console.log('📧 EMAIL_USER value:', process.env.EMAIL_USER);
-console.log('🔑 EMAIL_PASS length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0);
-
 const express = require('express');
-const cors = require('cors');
 const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const cors = require('cors');
+const session = require('express-session');
+const passport = require('passport');
+
+dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:5173'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-  credentials: true
+// Session middleware (required for Passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    secure: false // Set to true in production with HTTPS
+  }
 }));
+
+// Passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+// CORS configuration
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Database connection
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ MongoDB connected'))
-    .catch(err => console.error('❌ MongoDB connection error:', err));
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
-// Initialize email service AFTER confirming env vars
-console.log('📧 Initializing email service...');
-const emailService = require('./services/emailService');
+// Import Passport config
+require('./config/passport')(passport);
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
-const verifyRoutes = require('./routes/verifyRoutes');
 app.use('/api/auth', authRoutes);
-app.use('/api/auth', verifyRoutes);
 
-// Health check
-app.get('/', (req, res) => {
-    res.json({ 
-        message: 'Server is running',
-        emailConfigured: !!(process.env.EMAIL_USER && process.env.EMAIL_PASS)
-    });
-});
-
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
