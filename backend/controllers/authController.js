@@ -45,17 +45,14 @@ async function register(req, res) {
             return res.status(400).json({ success: false, message: 'Only Gmail accounts allowed' });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-        
         // Create verification token
         const verificationToken = crypto.randomBytes(32).toString('hex');
         
-        // Create user
+        // Create user; password will be hashed by schema pre-save hook
         const user = new User({
             name,
             email,
-            password: hashedPassword,
+            password,
             verificationToken,
             verificationTokenExpires: new Date(Date.now() + 24*60*60*1000),
             isVerified: false,
